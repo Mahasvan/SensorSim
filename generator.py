@@ -79,9 +79,8 @@ class GenerateTraffic():
 
     def make_cars(self):
         print(f"Making Cars: {self.number_of_vehicles}")
-        for i in range(self.number_of_vehicles):
-            car1 = Car(i, make_data_dict(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11))
-            self.cars.append(car1)
+        feet_config = load_config()
+        self.cars = cars = [convert_vehicle_config_to_car(index, vehicle) for index, vehicle in enumerate(feet_config.vehicles)]
         print(f"Made {len(self.cars)} cars")
         self.data_emitter = DataEmitter(self.cars, ConsoleEmitter())
 

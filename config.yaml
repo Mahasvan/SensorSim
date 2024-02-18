@@ -1,0 +1,41 @@
+vehicles:
+    - vehicle_id: EV_12345
+      type: gasoline
+      data_points:
+          fuel_level:
+              interval: 6
+              unit: "%"
+          speed:
+              interval: 5
+              unit: Kmph
+          acceleration:
+              interval: 10
+              unit: m/s^2
+    - vehicle_id: EV_12346
+      type: electric
+      data_points:
+          EV_charging_status:
+              interval: 15
+              statuses:
+                  - charging
+                  - discharging
+                  - standby
+              unit: status
+          EV_battery_level:
+              interval: 10
+              unit: "%"
+          engine_RPM:
+              interval: 5
+              unit: RPM
+          tire_pressure:
+              interval: 60
+              unit: psi
+              tires:
+                  - position: FL
+                    pressure_value: 30
+                  - position: FR
+                    pressure_value: 30
+                  - position: RL
+                    pressure_value: 30
+                  - position: RR
+                    pressure_value: 30

@@ -1,5 +1,6 @@
 from typing import List
 from datetime import datetime
+from config_loader import load_config, Vehicle
 from abc import ABC
 import time
 
@@ -20,10 +21,36 @@ def make_data_dict(odometer, speed, fuel_level, acceleration, engine_rpm, seatbe
         "tyre_pressure": tyre_pressure,
     }
 
+def convert_vehicle_config_to_car(carla_id: int, vehicle: Vehicle) -> 'Car':
+    car = Car(
+        carla_id,
+        vehicle.vehicle_id,
+        vehicle.type,
+        make_data_dict(
+            vehicle.data_points.odometer.interval if vehicle.data_points.odometer else 9999999,
+            vehicle.data_points.speed.interval if vehicle.data_points.speed else 9999999,
+            vehicle.data_points.fuel_level.interval if vehicle.data_points.fuel_level else 9999999,
+            vehicle.data_points.acceleration.interval if vehicle.data_points.acceleration else 9999999,
+            vehicle.data_points.engine_RPM.interval if vehicle.data_points.engine_RPM else 9999999,
+            vehicle.data_points.seatbelt_status.interval if vehicle.data_points.seatbelt_status else 9999999,
+            vehicle.data_points.ignition.interval if vehicle.data_points.ignition else 9999999,
+            vehicle.data_points.EV_charging_status.interval if vehicle.data_points.EV_charging_status else 9999999,
+            vehicle.data_points.EV_battery_level.interval if vehicle.data_points.EV_battery_level else 9999999,
+            vehicle.data_points.oil_level.interval if vehicle.data_points.oil_level else 9999999,
+            vehicle.data_points.tire_pressure.interval if vehicle.data_points.tire_pressure else 9999999,
+        )
+    )
+    
+    return car
+
 
 class Car:
-    def __init__(self, id, frequency_config) -> None:
+    def __init__(self, id, friendly_id, type, frequency_config)) -> None:
         self.id = id
+        self.type = type
+        self.type_speific_fields = ['ev_charging', 'ev_battery', 'oil_life', 'fuel_level']
+        self.self_fields = ['ev_charging', 'ev_battery'] if type == "electric" else ['oil_life', 'fuel_level']
+        self.friendly_id = friendly_id
         self.frequencies = make_data_dict(
             frequency_config["odometer"],
             frequency_config["speed"],
@@ -124,25 +151,28 @@ class DataEmitter:
     def iter(self):
         for car in self.cars.values():
             for key, value in car.data.items():
-                if (time.time() - car.last_emmited[key]) >= car.frequencies[key]:
-                    self.emitter.emit(car.id, car.return_emitable(key, value))
-                    car.last_emmited[key] = time.time()
+                if (timme.time() - car.last_emmited[key]).microseconds >= car.frequencies[key] :
+                    if key in car.type_speific_fields and (not key in car.self_fields):
+                        print("Type mismatch. Vehicle of type", car.type, "tried emmitting", key)
+                    else:
+                        self.emitter.emit(car.id, car.return_emitable(key, value))
+                        car.last_emmited[key] = time.time()
 
 
 def emitter_tester():
-    car1 = Car(1, make_data_dict(5, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11))
-    car2 = Car(2, make_data_dict(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11))
+    feet_config = load_config()
+    cars = [convert_vehicle_config_to_car(index, vehicle) for index, vehicle in enumerate(feet_config.vehicles)]
     emitter = ConsoleEmitter()
-    data_emitter = DataEmitter([car1, car2], emitter)
+    data_emitter = DataEmitter(cars, emitter)
     i = 1
     while True:
         print(f"Tick {i}")
-        data_emitter.push(1, {"odometer": 100 + i})
-        data_emitter.push(1, {"ev_battery": 100 + i})
-        data_emitter.push(2, {"ev_battery": 100 + i})
-        data_emitter.push(2, {"odometer": 100 + i})
+        data_emitter.push(0, {"odometer": 100+i})
+        data_emitter.push(0, {"ev_battery": 100+i})
+        data_emitter.push(1, {"ev_battery": 100+i})
+        data_emitter.push(1, {"odometer": 100+i})
         data_emitter.iter()
-        i += 1
+        i+=1
         time.sleep(1)
 
 
