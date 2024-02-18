@@ -59,7 +59,7 @@ class GenerateTraffic():
     def __init__(self, host='127.0.0.1', port=2000, number_of_vehicles=30, number_of_walkers=10,
                  safe=False, filterv='vehicle.audi.*', generationv='All', filterw='walker.pedestrian.*',
                  generationw='2', tm_port=8000, asynch=False, hybrid=False, seed=None, seedw=0,
-                 car_lights_on=False, hero=False, respawn=True, no_rendering=False):
+                 car_lights_on=False, hero=False, respawn=True, no_rendering=True):
         self.host = host
         self.port = port
         self.number_of_vehicles = number_of_vehicles
@@ -326,6 +326,11 @@ class GenerateTraffic():
                             mass = physics.mass
                             throttle = control.throttle
                             speed = i.get_velocity().length()
+
+                            # Destroying dormant vehicle
+                            if throttle > 0.5 and speed < 0.1:  
+                                i.destroy()
+
                             if round(speed) > 0.5:
                                 prev_nonzero_speed = time.time()
                             if round(speed) < 0.5:
