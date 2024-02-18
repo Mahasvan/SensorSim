@@ -14,7 +14,7 @@ xodr_data = carla.Osm2Odr.convert(osm_data, settings)
 f = open(r"./maps/annanagarxodr.xodr", 'w')
 f.write(xodr_data)
 f.close()
-client = carla.Client("127.0.0.1", 2000)
+client = carla.Client('10.5.27.231', 2000)
 client.set_timeout(10.0)
 world = client.get_world()
 

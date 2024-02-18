@@ -24,11 +24,6 @@ from numpy import random
 
 from assets.emitter import DataEmitter, ConsoleEmitter, make_data_dict, Car
 
-car1 = Car(0, make_data_dict(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11))
-car2 = Car(1, make_data_dict(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11))
-
-data_emitter = DataEmitter([car1, car2], ConsoleEmitter())
-
 
 def get_actor_blueprints(world, filter, generation):
     bps = world.get_blueprint_library().filter(filter)
@@ -78,6 +73,17 @@ class GenerateTraffic():
         self.hero = hero
         self.respawn = respawn
         self.no_rendering = no_rendering
+        self.cars = []
+        self.data_emitter = None
+        self.make_cars()
+
+    def make_cars(self):
+        print(f"Making Cars: {self.number_of_vehicles}")
+        for i in range(self.number_of_vehicles):
+            car1 = Car(i, make_data_dict(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11))
+            self.cars.append(car1)
+        print(f"Made {len(self.cars)} cars")
+        self.data_emitter = DataEmitter(self.cars, ConsoleEmitter())
 
     def set_synchronous_mode(self, world, fixed_delta_seconds=0.2):
         """Configure the simulation to run in synchronous mode."""
@@ -197,8 +203,8 @@ class GenerateTraffic():
             # Spawn Walkers
             # -------------
             # some settings
-            percentagePedestriansRunning = 15.0  # how many pedestrians will run
-            percentagePedestriansCrossing = 30.0  # how many pedestrians will walk through the road
+            PERCENTAGE_PEDESTRIANS_RUNNING = 15.0  # how many pedestrians will run
+            PERCENTAGE_PEDESTRIANS_CROSSING = 30.0  # how many pedestrians will walk through the road
 
             if self.seedw:
                 world.set_pedestrians_seed(self.seedw)
@@ -222,7 +228,7 @@ class GenerateTraffic():
                     walker_bp.set_attribute('is_invincible', 'false')
                 # set the max speed
                 if walker_bp.has_attribute('speed'):
-                    if (random.random() > percentagePedestriansRunning):
+                    if random.random() > PERCENTAGE_PEDESTRIANS_RUNNING:
                         # walking
                         walker_speed.append(walker_bp.get_attribute('speed').recommended_values[1])
                     else:
@@ -266,7 +272,7 @@ class GenerateTraffic():
 
             # 5. initialize each controller and set target to walk to (list is [controler, actor, controller, actor ...])
             # set how many pedestrians can cross the road
-            world.set_pedestrians_cross_factor(percentagePedestriansCrossing)
+            world.set_pedestrians_cross_factor(PERCENTAGE_PEDESTRIANS_CROSSING)
             for i in range(0, len(all_id), 2):
                 # start walker
                 all_actors[i].start()
@@ -303,7 +309,7 @@ class GenerateTraffic():
                 prev_nonzero_speed = time.time()
                 prev_zero_speed = time.time()
                 # while count < 20:
-
+                destroyed = []
                 while (tick_time := time.time()) < current_time + 60:
                     t1_start = time.perf_counter()
                     if not self.asynch and synchronous_master:
@@ -315,20 +321,27 @@ class GenerateTraffic():
                         all_vehicle_actors = world.get_actors(vehicles_list)
                         for id, i in enumerate(all_vehicle_actors):
                             torque_curve_data = []
-                            for vector in i.get_physics_control().torque_curve:
+                            try:
+                                physics = i.get_physics_control()
+                                control = i.get_control()
+                                velocity = i.get_velocity()
+                                acceleration = i.get_acceleration()
+                                i_transform = i.get_transform()
+                                location = i.get_location()
+                            except:
+                                continue
+
+                            for vector in physics.torque_curve:
                                 x_value = vector.x
                                 y_value = vector.y
                                 torque_curve_data.append((x_value, y_value))
 
-                            physics = i.get_physics_control()
-                            control = i.get_control()
                             gear = control.gear
-                            mass = physics.mass
                             throttle = control.throttle
-                            speed = i.get_velocity().length()
+                            speed = velocity.length()
 
                             # Destroying dormant vehicle
-                            if throttle > 0.5 and speed < 0.1:  
+                            if throttle > 0.5 and speed < 0.1:
                                 i.destroy()
 
                             if round(speed) > 0.5:
@@ -338,7 +351,7 @@ class GenerateTraffic():
                             uptime = int(time.time() - prev_zero_speed)
                             stopped_for = int(time.time() - prev_nonzero_speed)
                             wearing_seatbelt = is_seatbelt_on(uptime, stopped_for)
-                            acceleration = i.get_acceleration().length()
+                            acceleration = acceleration.length()
                             max_rpm = physics.max_rpm
                             final_drive_ratio = physics.final_ratio
                             try:
@@ -348,7 +361,7 @@ class GenerateTraffic():
 
                             wheel_radius = physics.wheels[0].radius / 100
                             engine_rpm = calculate_engine_rpm(gear, gear_ratio, final_drive_ratio, speed, wheel_radius)
-                            rotation = i.get_transform().rotation
+                            rotation = i_transform.rotation
                             inclination = get_vehicle_inclination(rotation)
                             airbags_deployed_bool = airbag_deployed(prev_accel[id], acceleration)
                             if airbags_deployed_bool:
@@ -359,8 +372,8 @@ class GenerateTraffic():
                                 prev_locations[id] = i.get_location()
 
                             # calculate distances travelled
-                            distance_travelled = i.get_location().distance(prev_locations[id])
-                            prev_locations[id] = i.get_location()
+                            distance_travelled = location.distance(prev_locations[id])
+                            prev_locations[id] = location
                             odometer_readings[id] += distance_travelled
 
                             mass = physics.mass
@@ -430,10 +443,10 @@ class GenerateTraffic():
                                 0,
                                 (0, 0, 0, 0)
                             )
-                            data_emitter.push(id, payload)
+                            self.data_emitter.push(id, payload)
                             arr.append(to_add)
                         print("----")
-                        data_emitter.iter()
+                        self.data_emitter.iter()
                         t1_stop = time.perf_counter()
                         try:
                             time.sleep(1 - (t1_stop - t1_start))
@@ -445,7 +458,8 @@ class GenerateTraffic():
 
                 df = pd.DataFrame(arr)
                 df.to_csv('../vehicle_data.csv', index=False)
-
+        except Exception as e:
+            print(e)
         finally:
 
             if not self.asynch and synchronous_master:
