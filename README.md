@@ -11,6 +11,7 @@ A CARLA-based sensor solution that uses values provided by the simulator to deri
 - EV Battery Health
 - Engine Oil Life Percentage
 - Tire Pressure (for all four wheels)
+- Airbag Status
 
 ## Usage
 - Install CARLA
